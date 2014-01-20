@@ -9,3 +9,8 @@ bin
 .project
 *.txt
 *.bat
+*/target/
+*.class
+modules/economy/target/LWC-Economy.jar
+modules/economy/target/classes/plugin.yml
+modules/economy/target/maven-archiver/pom.properties
