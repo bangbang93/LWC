@@ -28,6 +28,7 @@
 
 package com.griefcraft.listeners;
 
+import com.griefcraft.cache.ProtectionCache;
 import com.griefcraft.lwc.LWC;
 import com.griefcraft.lwc.LWCPlugin;
 import com.griefcraft.model.Protection;
@@ -170,6 +171,14 @@ public class LWCBlockListener implements Listener {
 
         if (ignoreBlockDestruction) {
             return;
+        }
+
+        ProtectionCache cache = lwc.getProtectionCache();
+        String cacheKey = cache.cacheKey(block.getLocation());
+
+        // In the event they place a block, remove any known nulls there
+        if (cache.isKnownNull(cacheKey)) {
+            cache.remove(cacheKey);
         }
 
         Protection protection = lwc.findProtection(block.getLocation());
@@ -321,6 +330,14 @@ public class LWCBlockListener implements Listener {
         Player player = event.getPlayer();
         Block block = event.getBlockPlaced();
 
+        ProtectionCache cache = lwc.getProtectionCache();
+        String cacheKey = cache.cacheKey(block.getLocation());
+
+        // In the event they place a block, remove any known nulls there
+        if (cache.isKnownNull(cacheKey)) {
+            cache.remove(cacheKey);
+        }
+
         // check if the block is blacklisted
         boolean blockIsBlacklisted = blacklistedBlocks.contains(block.getTypeId()) || blacklistedBlocks.contains(hashCode(block.getTypeId(), block.getData()));
 
@@ -426,7 +443,7 @@ public class LWCBlockListener implements Listener {
             }
 
             // All good!
-            Protection protection = lwc.getPhysicalDatabase().registerProtection(block.getTypeId(), type, block.getWorld().getName(), player.getName(), "", block.getX(), block.getY(), block.getZ());
+            Protection protection = lwc.getPhysicalDatabase().registerProtection(block.getTypeId(), type, block.getWorld().getName(), player.getUniqueId().toString(), "", block.getX(), block.getY(), block.getZ());
 
             if (!Boolean.parseBoolean(lwc.resolveProtectionConfiguration(block, "quiet"))) {
                 lwc.sendLocale(player, "protection.onplace.create.finalize", "type", lwc.getPlugin().getMessageParser().parseMessage(autoRegisterType.toLowerCase()), "block", LWC.materialToString(block));

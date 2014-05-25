@@ -37,6 +37,7 @@ import com.griefcraft.scripting.Module;
 import com.griefcraft.scripting.event.LWCBlockInteractEvent;
 import com.griefcraft.scripting.event.LWCDropItemEvent;
 import com.griefcraft.scripting.event.LWCProtectionInteractEvent;
+import com.griefcraft.util.UUIDRegistry;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
@@ -55,6 +56,7 @@ import org.bukkit.event.inventory.InventoryMoveItemEvent;
 import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
@@ -72,6 +74,12 @@ public class LWCPlayerListener implements Listener {
 
     public LWCPlayerListener(LWCPlugin plugin) {
         this.plugin = plugin;
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onPlayerJoin(PlayerJoinEvent event) {
+        Player player = event.getPlayer();
+        UUIDRegistry.updateCache(player.getUniqueId(), player.getName());
     }
 
     @EventHandler(ignoreCancelled = true)
@@ -147,7 +155,7 @@ public class LWCPlayerListener implements Listener {
 
             if (hopperProtection != null) {
                 // if they're owned by the same person then we can allow the move
-                if (hopperProtection.getOwner().equals(protection.getOwner())) {
+                if (protection.getOwner().equals(hopperProtection.getOwner())) {
                     return false;
                 }
             }
@@ -216,10 +224,19 @@ public class LWCPlayerListener implements Listener {
         }
 
         Block block = event.getClickedBlock();
-        Material material = block.getType();
+        BlockState state;
+
+        try {
+            state = block.getState();
+        } catch (NullPointerException e) {
+            //
+            lwc.log("Invalid Tile Entity detected at " + block.getLocation());
+            lwc.log("This is either an issue with your world or a bug in Bukkit");
+            return;
+        }
 
         // Prevent players with lwc.deny from interacting with blocks that have an inventory
-        if (block.getState() instanceof InventoryHolder && lwc.isProtectable(block)) {
+        if (state instanceof InventoryHolder && lwc.isProtectable(block)) {
             if (!lwc.hasPermission(player, "lwc.protect") && lwc.hasPermission(player, "lwc.deny") && !lwc.isAdmin(player) && !lwc.isMod(player)) {
                 lwc.sendLocale(player, "protection.interact.error.blocked");
                 event.setCancelled(true);
@@ -230,7 +247,7 @@ public class LWCPlayerListener implements Listener {
         try {
             Set<String> actions = lwcPlayer.getActionNames();
             Protection protection = lwc.findProtection(block.getLocation());
-            Module.Result result = Module.Result.DEFAULT;
+            Module.Result result;
             boolean canAccess = lwc.canAccessProtection(player, protection);
 
             // Calculate if the player has a pending action (i.e any action besides 'interacted')
